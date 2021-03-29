@@ -14,9 +14,8 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 import kotlin.math.ceil
-import kotlin.math.floor
 
-object UserPrefixRender {
+object MinecraftTextRender {
 
     fun renderTextToImage(text: String): Array<ByteArray> {
         val textToRender =
@@ -26,7 +25,7 @@ object UserPrefixRender {
         val widthTile = 64
         var maxWidth = (font.getWidth(PlainComponentSerializer.plain().serialize(textToRender)) + 1) * scale
         if (maxWidth.rem(widthTile) != 0) {
-            maxWidth = floor(maxWidth / widthTile.toFloat()).toInt() * widthTile
+            maxWidth = ceil(maxWidth / widthTile.toFloat()).toInt() * widthTile
         }
         val maxHeight = (font.height + 1) * scale
 
@@ -74,7 +73,8 @@ object UserPrefixRender {
                         }
                     }
 
-                    x += sprite.width + 1
+                    x += sprite.
+                    width + 1
                 }
             }
         }

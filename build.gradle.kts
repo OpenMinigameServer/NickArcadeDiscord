@@ -15,6 +15,7 @@ dependencies {
     api("net.dv8tion:JDA:4.2.0_251") {
         exclude(module = "opus-java")
     }
+    api("cloud.commandframework:cloud-jda:1.4.0")
 }
 
 tasks {
