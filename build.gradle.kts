@@ -24,6 +24,9 @@ tasks {
             this.exclude(dependency("com.squareup.okhttp3:okhttp"))
             this.exclude(dependency("com.fasterxml.jackson.core:"))
             this.exclude(dependency("com.squareup.okio:"))
+            this.exclude(dependency("cloud.commandframework:cloud-core:"))
+            this.exclude(dependency("io.leangen.geantyref:"))
+            this.exclude(dependency(":cloud-services:"))
         }
     }
 }

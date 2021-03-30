@@ -20,14 +20,31 @@ object UserPrefixEmoteManager {
 
         PlayerDataManager.playerDataCollection.find().consumeEach {
             val player = ArcadePlayer(it)
-            val text = (player.effectivePrefix + player.actualDisplayName)
-            val emotes = MinecraftTextRender.renderTextToImage(text)
-            emotes.forEachIndexed { i, emote ->
-                createEmote(emotesCount, errorCount, emote, "${player.actualDisplayName}_$i")
-            }
+            renderTextToEmotes(
+                emotesCount,
+                errorCount,
+                player.effectivePrefix + player.actualDisplayName,
+                player.actualDisplayName
+            )
+            renderTextToEmotes(
+                emotesCount, errorCount, player.effectivePrefix + "@" + player.actualDisplayName,
+                "disc_${player.actualDisplayName}"
+            )
         }
 
         println("Added a total of ${emotesCount.get()} emotes")
+    }
+
+    private fun renderTextToEmotes(
+        emotesCount: AtomicInteger,
+        errorCount: AtomicInteger,
+        text: String,
+        name: String
+    ) {
+        val emotes = MinecraftTextRender.renderTextToEmotesImage(text)
+        emotes.forEachIndexed { i, emote ->
+            createEmote(emotesCount, errorCount, emote, "${name}_$i")
+        }
     }
 
     private fun createEmote(
@@ -58,6 +75,7 @@ object UserPrefixEmoteManager {
                 println("Deleted guild $it")
             }
         }
+        guilds.clear()
     }
 
     var guilds = mutableMapOf<Int, Guild>()

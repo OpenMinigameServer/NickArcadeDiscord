@@ -1,10 +1,10 @@
 package io.github.openminigameserver.nickarcade.discord.core.commands.jda
 
-import io.github.openminigameserver.nickarcade.discord.core.interop.senders.jda.UnlinkedJDACommandSender
+import cloud.commandframework.jda.JDACommandSender
 import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.MessageEmbed
 
-fun UnlinkedJDACommandSender.reply(message: String) {
+fun JDACommandSender.reply(message: String) {
     if (event.isPresent) {
         event.get().message.reply(message).complete()
         return
@@ -12,7 +12,7 @@ fun UnlinkedJDACommandSender.reply(message: String) {
     channel.sendMessage(user.asMention + " " + message).complete()
 }
 
-fun UnlinkedJDACommandSender.reply(message: MessageEmbed) {
+fun JDACommandSender.reply(message: MessageEmbed) {
     if (event.isPresent) {
         event.get().message.reply(message).complete()
         return

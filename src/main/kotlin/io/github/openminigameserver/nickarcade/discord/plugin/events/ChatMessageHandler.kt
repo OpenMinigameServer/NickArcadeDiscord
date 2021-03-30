@@ -1,11 +1,18 @@
 package io.github.openminigameserver.nickarcade.discord.plugin.events
 
+import cloud.commandframework.jda.JDACommandSender
 import io.github.openminigameserver.nickarcade.chat.events.impl.AsyncChatChannelMessageSentEvent
+import io.github.openminigameserver.nickarcade.chat.events.impl.PrivateMessageDeliverAttemptEvent
+import io.github.openminigameserver.nickarcade.chat.events.impl.PrivateMessageDeliverResult
 import io.github.openminigameserver.nickarcade.chat.model.ChatChannelType
 import io.github.openminigameserver.nickarcade.core.data.sender.ArcadeSender
 import io.github.openminigameserver.nickarcade.core.data.sender.misc.ArcadeWatcherSender
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
 import io.github.openminigameserver.nickarcade.discord.botManager
+import io.github.openminigameserver.nickarcade.discord.core.commands.jda.commandSenderCache
+import io.github.openminigameserver.nickarcade.discord.core.interop.senders.jda.LinkedJDACommandSender
+import io.github.openminigameserver.nickarcade.discord.core.interop.senders.mc.LinkedJDAArcadeSender
+import io.github.openminigameserver.nickarcade.discord.core.io.database.PlayerLinkingManager
 import io.github.openminigameserver.nickarcade.discord.emotes
 import io.github.openminigameserver.nickarcade.discord.getCrafatarIcon
 import io.github.openminigameserver.nickarcade.plugin.extensions.event
@@ -16,6 +23,26 @@ import net.dv8tion.jda.api.entities.TextChannel
 import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer
 
 fun handleChatMessages() {
+
+    event<PrivateMessageDeliverAttemptEvent>(forceBlocking = true) {
+        if (result == PrivateMessageDeliverResult.PLAYER_OFFLINE) {
+            val link = PlayerLinkingManager.getLinkByPlayerId(target.uuid)
+            if (link != null) {
+                var resultSender: JDACommandSender? = commandSenderCache.getIfPresent(link.discordId)
+
+                if (resultSender == null) {
+                    val userById = botManager!!.staffChannel?.guild?.retrieveMemberById(link.discordId)?.complete()?.user
+                    if (userById != null) resultSender = LinkedJDACommandSender(userById, link)
+                }
+
+                if (resultSender is LinkedJDACommandSender) {
+                    target = resultSender.arcadeSender
+                    result = PrivateMessageDeliverResult.DELIVERED
+                }
+            }
+        }
+    }
+
     event<AsyncChatChannelMessageSentEvent> {
         val discordChannel = botManager?.staffChannel
         if (discordChannel is TextChannel && channel.type == ChatChannelType.STAFF && sender !is ArcadeWatcherSender) {
@@ -38,9 +65,20 @@ fun handleChatMessages() {
 
 private fun ArcadeSender.getActualDisplayName() = if (this is ArcadePlayer) this.actualDisplayName else this.displayName
 
-private fun ArcadeSender.getDiscordChatName(): String {
-    return if (this is ArcadePlayer) {
-        return (emotes?.filter { it.name.startsWith("${actualDisplayName}_") }?.sortedBy { it.name }
-            ?.joinToString("") { it.asMention } ?: actualDisplayName)
-    } else this.getActualDisplayName()
+fun ArcadeSender.getDiscordChatName(): String {
+    return when (this) {
+        is ArcadePlayer -> {
+            return (getEmotesForUser(actualDisplayName) ?: actualDisplayName)
+        }
+        is LinkedJDAArcadeSender -> {
+            return getEmotesForUser("disc_" + this.getActualDisplayName()) ?: getActualDisplayName()
+        }
+        else -> this.getActualDisplayName()
+    }
+}
+
+private fun getEmotesForUser(user: String): String? {
+    val prefix = "${user}_"
+    return emotes?.filter { it.name.startsWith(prefix) }?.sortedBy { it.name.removePrefix(prefix).toInt() }
+        ?.joinToString("") { it.asMention }
 }

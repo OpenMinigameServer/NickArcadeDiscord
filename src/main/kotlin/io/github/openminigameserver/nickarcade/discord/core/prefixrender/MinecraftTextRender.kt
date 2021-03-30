@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
+import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer
 import net.kyori.adventure.util.HSVLike
@@ -17,7 +18,25 @@ import kotlin.math.ceil
 
 object MinecraftTextRender {
 
-    fun renderTextToImage(text: String): Array<ByteArray> {
+    fun renderComponentToImage(text: Component, scale: Int = 7, padding: Int = 0): ByteArray {
+        val font = MinecraftFont.Font
+        val plainText = PlainComponentSerializer.plain().serialize(text)
+
+        val maxWidth = (measureTextWidth(font, text) * scale) + (padding * 2 * scale)
+        val maxHeight = (((font.height) * scale) * (plainText.count { it == '\n' } + 1)) + (padding * 2 * scale)
+
+        BufferedImage(maxWidth, maxHeight, BufferedImage.TYPE_INT_ARGB).apply {
+            val g = this.createGraphics()
+            drawText(padding, padding, text, g, font, scale)
+
+            return ByteArrayOutputStream().use {
+                ImageIO.write(this, "png", it)
+                it.toByteArray()
+            }
+        }
+    }
+
+    fun renderTextToEmotesImage(text: String): Array<ByteArray> {
         val textToRender =
             LegacyComponentSerializer.legacySection().deserialize(text)
         val font = MinecraftFont.Font
@@ -27,7 +46,7 @@ object MinecraftTextRender {
         if (maxWidth.rem(widthTile) != 0) {
             maxWidth = ceil(maxWidth / widthTile.toFloat()).toInt() * widthTile
         }
-        val maxHeight = (font.height + 1) * scale
+        val maxHeight = (font.height) * scale + 1
 
         val output = mutableListOf<ByteArray>()
         BufferedImage(maxWidth, maxHeight, BufferedImage.TYPE_INT_ARGB).apply {
@@ -50,34 +69,84 @@ object MinecraftTextRender {
         return output.toTypedArray()
     }
 
-    private fun drawText(startX: Int, startY: Int, text: TextComponent, g: Graphics2D, font: MinecraftFont, scale: Int) {
+    private fun measureTextWidth(
+        font: MinecraftFont,
+        text: Component,
+    ): Int {
         val components = text.flatten
-        var x = startX
-        val y = startY
+        var x = 0
+        val xList = mutableListOf<Int>()
         components.forEach { textComponent ->
             if (textComponent is TextComponent) {
                 textComponent.content().forEachIndexed { index, char ->
-                    val sprite = font.getChar(char) ?: font.getChar(' ')!!
-                    for (r in 0 until font.height) {
-                        for (c in 0 until sprite.width) {
-                            if (sprite[r, c]) {
-                                g.setPixel(scale, x + c, y + r, (textComponent.color() ?: NamedTextColor.WHITE).value())
-                                g.setPixel(
-                                    scale,
-                                    x + c + 1,
-                                    y + r + 1,
-                                    (textComponent.color() ?: NamedTextColor.WHITE).asHSV()
-                                        .let { TextColor.color(HSVLike.of(it.h(), it.s(), 0.25f)) }.value()
-                                )
-                            }
-                        }
+                    if (char == '\n') {
+                        xList += x
+                        x = 0
+                        return@forEachIndexed
                     }
+                    val isBoldChar = textComponent.style().hasDecoration(TextDecoration.BOLD)
+                    val sprite = font.getChar(char) ?: font.getChar(' ')!!
+                    if (isBoldChar)
+                        x += 1
 
-                    x += sprite.
-                    width + 1
+                    x += sprite.width + 1
                 }
             }
         }
+        xList += x
+        return xList.maxOrNull()!!
+    }
+
+    private fun drawText(startX: Int, startY: Int, text: Component, g: Graphics2D, font: MinecraftFont, scale: Int) {
+        val components = text.flatten
+        var x = startX
+        var y = startY
+        components.forEach { textComponent ->
+            if (textComponent is TextComponent) {
+                textComponent.content().forEachIndexed { index, char ->
+                    if (char == '\n') {
+                        x = startX
+                        y += font.height + 1
+                        return@forEachIndexed
+                    }
+                    val isBoldChar = textComponent.style().hasDecoration(TextDecoration.BOLD)
+                    val sprite = font.getChar(char) ?: font.getChar(' ')!!
+                    for (pxlY in 0 until font.height) {
+                        for (pxlX in 0 until sprite.width) {
+                            if (sprite[pxlY, pxlX]) {
+                                renderComponentPixel(g, scale, x, y, pxlX, pxlY, textComponent)
+                                if (isBoldChar) {
+                                    renderComponentPixel(g, scale, x + 1, y, pxlX, pxlY, textComponent)
+                                }
+                            }
+                        }
+                    }
+                    if (isBoldChar)
+                        x += 1
+
+                    x += sprite.width + 1
+                }
+            }
+        }
+    }
+
+    private fun renderComponentPixel(
+        g: Graphics2D,
+        scale: Int,
+        x: Int,
+        y: Int,
+        pxlX: Int,
+        pxlY: Int,
+        textComponent: Component
+    ) {
+        g.setPixel(
+            scale,
+            x + pxlX + 1,
+            y + pxlY + 1,
+            (textComponent.color() ?: NamedTextColor.WHITE).asHSV()
+                .let { TextColor.color(HSVLike.of(it.h(), it.s(), 0.25f)) }.value()
+        )
+        g.setPixel(scale, x + pxlX, y + pxlY, (textComponent.color() ?: NamedTextColor.WHITE).value())
     }
 
     private fun Graphics2D.setPixel(scale: Int, x: Int, y: Int, color: Int) {
