@@ -23,14 +23,24 @@ import java.util.function.Function
 
 class BotCommandManager : JDA4CommandManager<JDACommandSender>(
     botManager!!.jdaBot,
-    { "/" },
+    {
+//        if (it.user.name == "NickAc")
+            "/"
+//        else "CTz&[4ctosaqi&H"
+    },
     null,
     AsynchronousCommandExecutionCoordinator.newBuilder<JDACommandSender>().withAsynchronousParsing().build(),
     computeCommandSender(),
     { if (it is UnlinkedJDACommandSender) it.original else if (it is LinkedJDACommandSender) it.original else it }) {
     init {
         registerCommandPreProcessor {
-            JavaPlugin.getPlugin(DiscordPlugin::class.java)!!.logger.info("${it.commandContext.sender.user.asTag} executed command /${it.inputQueue.joinToString(" ")}")
+            JavaPlugin.getPlugin(DiscordPlugin::class.java).logger.info(
+                "${it.commandContext.sender.user.asTag} executed command /${
+                    it.inputQueue.joinToString(
+                        " "
+                    )
+                }"
+            )
         }
 
         parserRegistry.registerParserSupplier(TypeToken.get(ArcadePlayer::class.java)) {

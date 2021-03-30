@@ -8,21 +8,32 @@ import io.github.openminigameserver.nickarcade.chat.model.ChatChannelType
 import io.github.openminigameserver.nickarcade.core.data.sender.ArcadeSender
 import io.github.openminigameserver.nickarcade.core.data.sender.misc.ArcadeWatcherSender
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
+import io.github.openminigameserver.nickarcade.core.events.data.PlayerDataReloadEvent
 import io.github.openminigameserver.nickarcade.discord.botManager
 import io.github.openminigameserver.nickarcade.discord.core.commands.jda.commandSenderCache
 import io.github.openminigameserver.nickarcade.discord.core.interop.senders.jda.LinkedJDACommandSender
 import io.github.openminigameserver.nickarcade.discord.core.interop.senders.mc.LinkedJDAArcadeSender
 import io.github.openminigameserver.nickarcade.discord.core.io.database.PlayerLinkingManager
-import io.github.openminigameserver.nickarcade.discord.emotes
+import io.github.openminigameserver.nickarcade.discord.emotesCache
 import io.github.openminigameserver.nickarcade.discord.getCrafatarIcon
 import io.github.openminigameserver.nickarcade.plugin.extensions.event
 import kotlinx.datetime.Clock
 import kotlinx.datetime.toJavaInstant
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.entities.ListedEmote
 import net.dv8tion.jda.api.entities.TextChannel
 import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer
 
 fun handleChatMessages() {
+    event<PlayerDataReloadEvent> {
+        val link = PlayerLinkingManager.getLinkByPlayerId(player.uuid)
+        if (link != null) {
+            val cached = commandSenderCache.getIfPresent(link.discordId)
+            if (cached != null && cached is LinkedJDACommandSender) {
+                cached.arcadeSender.player = player
+            }
+        }
+    }
 
     event<PrivateMessageDeliverAttemptEvent>(forceBlocking = true) {
         if (result == PrivateMessageDeliverResult.PLAYER_OFFLINE) {
@@ -78,7 +89,11 @@ fun ArcadeSender.getDiscordChatName(): String {
 }
 
 private fun getEmotesForUser(user: String): String? {
-    val prefix = "${user}_"
-    return emotes?.filter { it.name.startsWith(prefix) }?.sortedBy { it.name.removePrefix(prefix).toInt() }
+    return getRawEmotesForUser(user)
         ?.joinToString("") { it.asMention }
+}
+
+fun getRawEmotesForUser(user: String): List<ListedEmote>? {
+    val prefix = "${user}_"
+    return emotesCache?.filter { it.name.startsWith(prefix) }?.sortedBy { it.name.removePrefix(prefix).toInt() }
 }

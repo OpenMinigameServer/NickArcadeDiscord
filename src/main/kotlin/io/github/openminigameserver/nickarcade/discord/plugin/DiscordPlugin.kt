@@ -24,17 +24,24 @@ import kotlin.time.measureTime
 class DiscordPlugin : JavaPlugin() {
 
     companion object {
-        fun createRankEmotes() {
+
+        private fun loadEmotesCache() {
+            discordEmotesCacheConfigurationFile = ArcadeConfigurationFile("cache.yml", getPlugin(DiscordPlugin::class.java))
+            discordEmotesCacheConfiguration = discordEmotesCacheConfigurationFile.load()
+        }
+
+
+        fun createRankEmotes(isCleanup: Boolean = false) {
             launchAsync {
                 val time = measureTime {
-                    UserPrefixEmoteManager.renderPlayerPrefixesToEmotes()
+                    UserPrefixEmoteManager.renderPlayerPrefixesToEmotes(isCleanup)
                 }
 
                 println("Took $time to add all player emotes")
 
-                emotes = botManager!!.jdaBot.guilds.flatMap {
+                emotesCache = botManager!!.jdaBot.guilds.flatMap {
                     it.retrieveEmotes().complete()
-                }
+                }.toMutableList()
             }
         }
     }
@@ -44,6 +51,8 @@ class DiscordPlugin : JavaPlugin() {
             isEnabled = false
             return
         }
+        loadEmotesCache()
+
         botManager = BotManager(discordConfiguration)
         IoC += botManager!!
 
@@ -52,7 +61,7 @@ class DiscordPlugin : JavaPlugin() {
         handleInviteEvents()
         handleChatMessages()
 
-        createRankEmotes()
+        createRankEmotes(discordEmotesCacheConfiguration.cachedEntries.isEmpty())
     }
 
     private fun prepareCommandManager() {

@@ -10,7 +10,7 @@ import net.kyori.adventure.audience.Audience
 import org.bukkit.command.CommandSender
 
 class LinkedJDAArcadeSender(private val sender: LinkedJDACommandSender) : ArcadeSender(sender.link.playerId) {
-    private val player by lazy { runBlocking { sender.getPlayer() } }
+    internal var player = runBlocking { sender.getPlayer() }
     override val audience: Audience
         = JDAAudience(sender)
 

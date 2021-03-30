@@ -1,25 +1,79 @@
 package io.github.openminigameserver.nickarcade.discord.core.prefixrender
 
+import com.mongodb.client.model.Filters
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
+import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayerData
 import io.github.openminigameserver.nickarcade.core.manager.PlayerDataManager
 import io.github.openminigameserver.nickarcade.discord.botManager
+import io.github.openminigameserver.nickarcade.discord.core.io.database.DiscordUserPlayerLinkEntry
+import io.github.openminigameserver.nickarcade.discord.discordEmotesCacheConfiguration
+import io.github.openminigameserver.nickarcade.discord.discordEmotesCacheConfigurationFile
+import io.github.openminigameserver.nickarcade.discord.emotesCache
+import io.github.openminigameserver.nickarcade.discord.plugin.events.getRawEmotesForUser
+import io.github.openminigameserver.nickarcade.plugin.extensions.launchAsync
 import net.dv8tion.jda.api.entities.ChannelType
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.Icon
 import net.dv8tion.jda.api.requests.restaction.GuildAction
+import org.litote.kmongo.lookup
+import org.litote.kmongo.match
+import org.litote.kmongo.not
+import org.litote.kmongo.path
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.floor
 
 object UserPrefixEmoteManager {
 
-    suspend fun renderPlayerPrefixesToEmotes() {
-        cleanupGuilds()
+    suspend fun renderPlayerPrefixesToEmotes(isCleanup: Boolean = false) {
+        if (isCleanup) cleanupGuilds()
         val errorCount = AtomicInteger()
         val emotesCount = AtomicInteger()
 
-        PlayerDataManager.playerDataCollection.find().consumeEach {
-            val player = ArcadePlayer(it)
+        PlayerDataManager.playerDataCollection.aggregate<ArcadePlayerData>(
+            listOf(
+                lookup(
+                    from = "discordLinks",
+                    localField = ArcadePlayerData::uuid.path(),
+                    foreignField = DiscordUserPlayerLinkEntry::playerId.path(),
+                    newAs = "discordLinks"
+                ),
+                match(
+                    not(Filters.size("discordLinks", 0))
+                )
+            )
+
+        ).consumeEach {
+            updateUserEmotes(it, isCleanup, emotesCount, errorCount)
+        }
+
+        discordEmotesCacheConfigurationFile.save(discordEmotesCacheConfiguration)
+        println("Added a total of ${emotesCount.get()} emotes")
+    }
+
+    private fun updateUserEmotes(
+        it: ArcadePlayerData,
+        cleanup: Boolean,
+        emotesCount: AtomicInteger,
+        errorCount: AtomicInteger
+    ) {
+        val player = ArcadePlayer(it)
+
+        val cacheEntry = discordEmotesCacheConfiguration.cachedEntries[it.uuid]
+
+        val entryCacheValue = player.getChatName(true)
+        if (cleanup || cacheEntry == null || cacheEntry != entryCacheValue) {
+            //Delete old emotes
+            launchAsync {
+                println("Deleting old emotes for ${player.actualDisplayName}")
+                arrayOf("", "disc_").flatMap { getRawEmotesForUser(it + player.actualDisplayName) ?: emptyList() }
+                    .forEach { emote ->
+                        emote.delete().complete()
+                        emotesCache?.removeIf { it.idLong == emote.idLong }
+                    }
+                println("Deleted old emotes for ${player.actualDisplayName}")
+            }
+
             renderTextToEmotes(
                 emotesCount,
                 errorCount,
@@ -30,9 +84,9 @@ object UserPrefixEmoteManager {
                 emotesCount, errorCount, player.effectivePrefix + "@" + player.actualDisplayName,
                 "disc_${player.actualDisplayName}"
             )
-        }
 
-        println("Added a total of ${emotesCount.get()} emotes")
+            discordEmotesCacheConfiguration.cachedEntries[it.uuid] = entryCacheValue
+        }
     }
 
     private fun renderTextToEmotes(
