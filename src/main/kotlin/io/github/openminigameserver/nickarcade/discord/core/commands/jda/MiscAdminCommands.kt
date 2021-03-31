@@ -7,19 +7,12 @@ import io.github.openminigameserver.hypixelapi.models.HypixelPackageRank
 import io.github.openminigameserver.nickarcade.core.data.sender.ArcadeSender
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
 import io.github.openminigameserver.nickarcade.discord.core.io.database.PlayerLinkingManager
-import io.github.openminigameserver.nickarcade.discord.plugin.DiscordPlugin.Companion.createRankEmotes
 import io.github.openminigameserver.nickarcade.plugin.extensions.command
 import io.github.openminigameserver.nickarcade.plugin.helper.commands.RequiredRank
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 
 object MiscAdminCommands {
-
-    @RequiredRank(HypixelPackageRank.ADMIN)
-    @CommandMethod("debugrefreshuseremotes")
-    fun refreshUserEmotes(sender: ArcadeSender, @Flag("force", aliases = ["f"]) force: Boolean) {
-        createRankEmotes(force)
-    }
 
     @RequiredRank(HypixelPackageRank.ADMIN)
     @CommandMethod("link admin <player> <id>")

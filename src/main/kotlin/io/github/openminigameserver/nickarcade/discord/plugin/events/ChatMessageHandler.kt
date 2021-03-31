@@ -5,6 +5,7 @@ import io.github.openminigameserver.nickarcade.chat.events.impl.AsyncChatChannel
 import io.github.openminigameserver.nickarcade.chat.events.impl.PrivateMessageDeliverAttemptEvent
 import io.github.openminigameserver.nickarcade.chat.events.impl.PrivateMessageDeliverResult
 import io.github.openminigameserver.nickarcade.chat.model.ChatChannelType
+import io.github.openminigameserver.nickarcade.chat.model.ChatEmote
 import io.github.openminigameserver.nickarcade.core.data.sender.ArcadeSender
 import io.github.openminigameserver.nickarcade.core.data.sender.misc.ArcadeWatcherSender
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
@@ -42,7 +43,8 @@ fun handleChatMessages() {
                 var resultSender: JDACommandSender? = commandSenderCache.getIfPresent(link.discordId)
 
                 if (resultSender == null) {
-                    val userById = botManager!!.staffChannel?.guild?.retrieveMemberById(link.discordId)?.complete()?.user
+                    val userById =
+                        kotlin.runCatching { botManager!!.staffChannel?.guild?.retrieveMemberById(link.discordId)?.complete() }.getOrNull()?.user
                     if (userById != null) resultSender = LinkedJDACommandSender(userById, link)
                 }
 
@@ -96,4 +98,14 @@ private fun getEmotesForUser(user: String): String? {
 fun getRawEmotesForUser(user: String): List<ListedEmote>? {
     val prefix = "${user}_"
     return emotesCache?.filter { it.name.startsWith(prefix) }?.sortedBy { it.name.removePrefix(prefix).toInt() }
+}
+
+fun getRawEmotesForChatEmote(emote: ChatEmote): List<ListedEmote>? {
+    val prefix = "emote_${emote.ordinal}_"
+    return emotesCache?.filter { it.name.startsWith(prefix) }?.sortedBy { it.name.removePrefix(prefix).toInt() }
+}
+
+fun getEmotesForChatEmote(emote: ChatEmote): String? {
+    return getRawEmotesForChatEmote(emote)
+        ?.joinToString("") { it.asMention }
 }

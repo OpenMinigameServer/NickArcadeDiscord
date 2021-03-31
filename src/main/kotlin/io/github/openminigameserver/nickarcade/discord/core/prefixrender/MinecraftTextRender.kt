@@ -5,7 +5,6 @@ import net.kyori.adventure.text.TextComponent
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer
 import net.kyori.adventure.util.HSVLike
 import org.bukkit.map.MinecraftFont
@@ -14,7 +13,6 @@ import java.awt.Graphics2D
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import kotlin.math.ceil
 
 object MinecraftTextRender {
 
@@ -34,39 +32,6 @@ object MinecraftTextRender {
                 it.toByteArray()
             }
         }
-    }
-
-    fun renderTextToEmotesImage(text: String): Array<ByteArray> {
-        val textToRender =
-            LegacyComponentSerializer.legacySection().deserialize(text)
-        val font = MinecraftFont.Font
-        val scale = 7
-        val widthTile = 64
-        var maxWidth = (font.getWidth(PlainComponentSerializer.plain().serialize(textToRender)) + 1) * scale
-        if (maxWidth.rem(widthTile) != 0) {
-            maxWidth = ceil(maxWidth / widthTile.toFloat()).toInt() * widthTile
-        }
-        val maxHeight = (font.height) * scale + 1
-
-        val output = mutableListOf<ByteArray>()
-        BufferedImage(maxWidth, maxHeight, BufferedImage.TYPE_INT_ARGB).apply {
-            val g = this.createGraphics()
-
-            drawText(0, 0, textToRender, g, font, scale)
-
-            repeat(ceil(maxWidth / widthTile.toFloat()).toInt()) { tileId ->
-                val x = widthTile * tileId
-                var finalTileWidth = widthTile
-                if (x + finalTileWidth > maxWidth)
-                    finalTileWidth = maxWidth - x
-
-                output += ByteArrayOutputStream().use {
-                    ImageIO.write(getSubimage(x, 0, finalTileWidth, maxHeight), "png", it)
-                    it.toByteArray()
-                }
-            }
-        }
-        return output.toTypedArray()
     }
 
     private fun measureTextWidth(

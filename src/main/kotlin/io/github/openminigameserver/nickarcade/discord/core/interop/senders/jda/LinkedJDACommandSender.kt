@@ -13,6 +13,7 @@ class LinkedJDACommandSender(internal val original: JDACommandSender, val link: 
     original.event.orElse(null), original
         .user, original.channel
 ), ForwardingAudience {
+
     constructor(user: User, link: DiscordUserPlayerLinkEntry) : this(SimpleJDACommandSender(user), link)
 
     val arcadeSender by lazy { LinkedJDAArcadeSender(this) }

@@ -5,7 +5,9 @@ import cloud.commandframework.annotations.CommandMethod
 import cloud.commandframework.annotations.specifier.Greedy
 import io.github.openminigameserver.hypixelapi.models.HypixelPackageRank
 import io.github.openminigameserver.nickarcade.chat.utils.PrivateMessageUtils
+import io.github.openminigameserver.nickarcade.chat.utils.lastReply
 import io.github.openminigameserver.nickarcade.core.data.sender.player.ArcadePlayer
+import io.github.openminigameserver.nickarcade.discord.core.interop.senders.jda.JDAAudience
 import io.github.openminigameserver.nickarcade.discord.core.interop.senders.jda.LinkedJDACommandSender
 import io.github.openminigameserver.nickarcade.plugin.helper.commands.RequiredRank
 import net.kyori.adventure.text.Component.newline
@@ -21,6 +23,25 @@ object DiscordMessageCommands {
         @Argument("message") @Greedy message: String
     ) {
         PrivateMessageUtils.sendPrivateMessage(sender.arcadeSender, target, text(message))
+    }
+    @CommandMethod("w|msg|message|tell <target>")
+    fun startPrivateMessage(
+        sender: LinkedJDACommandSender,
+        @Argument("target") target: ArcadePlayer,
+    ) {
+        val arcadeSender = sender.arcadeSender
+        val audience = (arcadeSender.audience as JDAAudience)
+        audience.lastSender = target.uuid
+        arcadeSender.lastReply = target
+        audience.sendMessage(text {
+            it.append(text("Opened a chat conversation with ", NamedTextColor.GREEN))
+            it.append(text(target.getChatName(actualData = true, colourPrefixOnly = false)))
+            it.append(text(" for the next 5 minutes.\nReplying in this channel will automatically reply to them.",
+                NamedTextColor.GREEN
+            ))
+        })
+
+
     }
 
     @CommandMethod("r <message>")
