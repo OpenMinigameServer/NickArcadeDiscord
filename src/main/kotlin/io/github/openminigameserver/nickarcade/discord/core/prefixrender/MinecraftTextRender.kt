@@ -17,7 +17,7 @@ import javax.imageio.ImageIO
 object MinecraftTextRender {
 
     fun renderComponentToImage(text: Component, scale: Int = 7, padding: Int = 0): ByteArray {
-        val font = MinecraftFont.Font
+        val font = EmoteableMinecraftFont
         val plainText = PlainComponentSerializer.plain().serialize(text)
 
         val maxWidth = (measureTextWidth(font, text) * scale) + (padding * 2 * scale)
